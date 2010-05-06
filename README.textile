@@ -1,0 +1,1 @@
+Quick and dirty hack for is_paranoid has_many and has_one associations
