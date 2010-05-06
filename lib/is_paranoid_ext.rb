@@ -7,6 +7,11 @@ module IsParanoidExt
     has_many association_id, options, &extension
   end
 
+  def has_and_belongs_to_many_paranoid(association_id, options = {}, &extension)
+    merge_paranoid_options!(association_id, options)
+    has_and_belongs_to_many association_id, options, &extension
+  end
+  
   def has_one_paranoid(association_id, options = {}, &extension)
     merge_paranoid_options!(association_id, options)
     has_one association_id, options, &extension
