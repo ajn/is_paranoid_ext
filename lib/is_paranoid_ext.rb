@@ -1,44 +1,32 @@
 require 'activerecord'
 
 module IsParanoidExt
-
-  def has_many_paranoid(association_id, options = {}, &extension)
-    merge_paranoid_options!(association_id, options)
-    has_many association_id, options, &extension
-  end
-
-  def has_and_belongs_to_many_paranoid(association_id, options = {}, &extension)
-    merge_paranoid_options!(association_id, options)
-    has_and_belongs_to_many association_id, options, &extension
+  
+  def preload_has_one_association(records, reflection, preload_options = {})
+    super(records, reflection, paranoid_preload_options(reflection, preload_options))
   end
   
-  def has_one_paranoid(association_id, options = {}, &extension)
-    merge_paranoid_options!(association_id, options)
-    has_one association_id, options, &extension
+  def preload_has_many_association(records, reflection, preload_options = {})
+    super(records, reflection, paranoid_preload_options(reflection, preload_options))
+  end
+  
+  def preload_has_and_belongs_to_many_association(records, reflection, preload_options = {})
+    super(records, reflection, paranoid_preload_options(reflection, preload_options))
   end
 
   private
-  
-  def merge_paranoid_options!(association_id, options)
-    @paranoid_conditions = []
-    apply_paranoid_conditions_for(options[:class_name] || association_id)
-    apply_paranoid_conditions_for options[:through] if options[:through]
-    unless @paranoid_conditions.empty?
-      options.merge!( :conditions => merge_conditions( @paranoid_conditions + [sanitize_sql(options.delete(:conditions) || [])] ) ) 
-      @paranoid_conditions = []
+
+  def paranoid_preload_options(reflection, preload_options)
+    paranoid_preload_opts = preload_options.dup
+    if reflection.klass.respond_to?(:restore)
+      sql_array  = ["#{reflection.klass.quoted_table_name}.#{reflection.klass.destroyed_field} IS ?"]
+      sql_array << reflection.klass.field_not_destroyed
+      preload_conditions = paranoid_preload_opts.delete(:conditions) || []
+      paranoid_preload_opts.merge(:conditions => merge_conditions(sql_array, preload_conditions))
     end
+    paranoid_preload_opts
   end
-  
-  def apply_paranoid_conditions_for(association_id)
-    reflection = reflections[association_id.to_sym]
-    association_klass = ( reflection.try(:klass) || association_id.to_s.classify.constantize )
-    if association_klass && association_klass.respond_to?(:restore)
-      sql_array = ["#{association_klass.quoted_table_name}.#{association_klass.destroyed_field} IS ?"]
-      sql_array << association_klass.field_not_destroyed
-      @paranoid_conditions <<  sanitize_sql_array(sql_array)
-    end
-  end
-  
+
 end
 
 ActiveRecord::Base.send(:extend, IsParanoidExt)
